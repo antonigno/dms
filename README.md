@@ -1,4 +1,0 @@
-dms
-===
-
-django-monitoring-system
