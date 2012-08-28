@@ -1,0 +1,315 @@
+'''
+author: Borgia Antonino Stefano
+mail: antonino.borgia@guest.telecomitalia.it
+django model classes
+'''
+
+import sys
+import cgi
+from rpc4django import rpcmethod
+from models import Host, User, Area, ProductionEnvironment, \
+Control, TimeSlot, ExecutedControl, FileServe, Statistic
+from models import StatType
+from utils import check_param, datetime_conversion
+from django.db.utils import IntegrityError
+import os
+import shlex
+import xmlrpclib
+import re
+import exceptions
+import time
+from subprocess import Popen, PIPE
+from django.conf import settings
+from datetime import datetime
+import logging
+
+logger = logging.getLogger('logview.outlog')
+
+
+# load configuration variables
+try:
+    XML_RCV_KEY = settings.XML_RCV_KEY
+    XML_RCV_USER = settings.XML_RCV_USER
+    XML_RCV_HOST = settings.XML_RCV_HOST
+    XML_RCV_PATH = settings.XML_RCV_PATH
+    XML_TMP_PATH = settings.XML_TMP_PATH
+    FILE_SERVE_PATH = settings.FILE_SERVE_PATH
+except exceptions.AttributeError:
+    logger.error(sys.exc_info()[1])
+
+
+def removebackspaces(text):
+    '''removes backspace ansii codes from text'''
+    backspace_or_eol = r'(.\010)|(\033\[K)|(\[39;49m)'
+    n = 1
+    while n > 0:
+        text, n = re.subn(backspace_or_eol, '', text, 1)
+    return text
+
+
+@rpcmethod(name='file_align', signature=['struct'])
+def file_align(kwargs):
+    '''Richiede al server una lista di file da prelevare via rpc e salvare al
+    path indicato con i permessi indicati
+    >>> file_align({'host':'apcas1', 'user':'apc1q'})
+    ({"filename": file_name, "destination_path":"tmp",
+    "file":xmlrpclib.Binary, "permissions":"700" },...,{"execution_errors":""})
+    Se chiamato con il parametro ack='nome_file'
+    provoca la cancellazione del file dalla tabella:
+    >>> file_align({'host':'apcas1', 'user':'apc1q', 'ack':'nome_file'})
+    ({"errori":""})
+    a meno che non sia avvenuto un errore nell'esecuzione:
+    >>> file_align({'host':'apcas1', 'user':'apc1q', 'ack':'nome_file',
+    'execution_errors':'qualche errore'})
+    '''
+    list = []
+    host = kwargs.get('host')
+    user = kwargs.get('user')
+    ack = kwargs.get('ack')
+    # chiamata di acknowledge
+    if ack:
+        errori = ""
+        errori_ack = kwargs.get('excecution_errors')
+        filename = kwargs.get('filename')
+        logger.info("ack %s ricevuto da %s %s" % (ack, host, user))
+        if not errori_ack:
+            try:
+                for file in FileServe.objects.filter(productionEnvironment__host__name=host, \
+productionEnvironment__user=user, file_name=ack):
+                    file.delete()
+            except:
+                errori = sys.exc_info()[1]
+        else:
+            logger.error("errori: %s" % errori_ack)
+        list.append({"errori": errori})
+    # richiesta file da allineare
+    else:
+        for file in FileServe.objects.filter(\
+productionEnvironment__host__name=host, productionEnvironment__user=user):
+            # skip di un file errato
+            if file.error:
+                continue
+            try:
+                fullpath = "%s/%s/%s" % (FILE_SERVE_PATH, file.file_path, file.file_name)
+                f = open(fullpath, 'rb')
+                list.append({"file_name": file.file_name, \
+"destination_path": file.destination_path, "permissions": file.permissions, \
+"file": xmlrpclib.Binary(f.read())})
+            except IOError:
+                logger.error("Unexpected error:", sys.exc_info()[1])
+                logger.error("File %s non esistente" % fullpath)
+                logger.error("Inserisco la flag error nella entry in DB")
+                try:
+                    file.error = True
+                    file.save()
+                except:
+                    logger.error("Errore nel save")
+                    logger.error("Unexpected error:", sys.exc_info()[1])
+                pass
+    if list:
+        logger.info("lista di file da allineare per %s@%s:" % (user, host))
+        logger.info(list)
+    return list
+
+
+@rpcmethod(name='lista_controlli', signature=['struct'])
+def lista_controlli(kwargs):
+    '''Richiede al server una lista di controlli da eseguire
+    >>> lista_controlli({'host':'apcas1', 'user':'apc1q'}) 
+    ritorna una lista[{'nome_controllo': controllo}]
+    '''
+    host = kwargs.get('host', 'no-host')
+    user = kwargs.get('user', 'no-user')
+    message =  "Richiesta lista_controlli pervenuta da: %s, user:%s" %(kwargs['host'], user)
+    logger.info(message)
+    lista = []
+    for c in Control.objects.filter(productionEnvironment__host__name=host, productionEnvironment__user=user):
+        timeslot_start = c.time_slot.start_time
+        timeslot_end = c.time_slot.end_time
+        if timeslot_start == timeslot_end or timeslot_start <= datetime.now().time() <= timeslot_end:
+#        sonoinfascia = timeslot_start <= datetime.now().time() <= timeslot_end
+#        message = "start: %s end:%s now:%s" %(timeslot_start, timeslot_end, datetime.now().time())
+#        message = "sono in fascia? %s" %sonoinfascia
+#        logger.debug(message)
+            lista.append({"nome_controllo":c.name, "script":c.script})    
+    return lista
+
+
+@rpcmethod(name='esito_controllo', signature=['struct'])
+def esito_controllo(kwargs):
+    '''Invia al server i dati relativi all'esecuzione di un controllo
+    >>> esito_controllo({'host':'apcas1', 'user':'apc1q',
+'nome_controllo':'code','output':'output controllo','errori':'errori controllo'
+,'info_link':'http://tieto.com','execution_errors':'impossibile eseguire',
+'stats':({'host':'apcas1', 'user':'apc1q','stat_time':'2012-03-08 15:00:00',
+'timestamp':'2012-03-08 15:00:00'(opzionale), 'stat_element'='FS /appl',
+'stat_value'='89', 'extra':''(opzionale), 'stat_type'='errors',},{}))
+    '''
+    print kwargs
+    #message = ''+kwargs
+    host = kwargs.get('host', 'no-host')
+    user = kwargs.get('user', 'no-user')
+    nome_controllo = kwargs.get('nome_controllo')
+    # controllare che l'output sia valorizzato
+    # (almeno in assenza di errori_esecuzione)
+    output = kwargs.get('output').__str__()
+    output = removebackspaces(output)
+    # TODO decode
+    #output = output_bin.encode()
+    stats = kwargs.get('stats')
+    errori = kwargs.get('errori')
+    errori_esecuzione = kwargs.get('execution_errors')
+    # l'ora del controlli viene impostata a livello di DB su now
+    #control_time = datetime_conversion(kwargs.get('ora_controllo'))
+    info_link = kwargs.get('info_link')
+    for control in Control.objects.filter(productionEnvironment__host__name=host, \
+productionEnvironment__user=user, name=nome_controllo):
+        # inserimento nello storico
+        logger.debug("inserimento controllo %s in db" % nome_controllo)
+        execc = ExecutedControl(control=control, output=output, errors=errori)
+        execc.save()
+        logger.debug("inserimento effettuato correttamente.")
+    # inserimento in statistiche
+    if stats:
+        logger.debug("insterisco stat per il controllo %s %s@%s" % (nome_controllo, user, host))
+        #message = "STATS: %s" %stats
+        #logger.debug(message)
+        insert_statistic(stats)
+    if errori_esecuzione:
+        logger.error("errori_esecuzione: %s" % errori_esecuzione)
+    logger.debug("ricevuto output %s dalla macchina %s: %s" % (nome_controllo, host, output))
+    logger.debug("ricevuto errori %s dalla macchina %s: %s" % (nome_controllo, host, errori))
+    lista_errori = []
+    err = ""
+    lista_errori.append({"errori": err})
+    return lista_errori
+
+
+@rpcmethod(name='esito_controllo_bulk', signature=['struct'])
+def esito_controllo_bulk(kwargs):
+    '''Invia al server i dati relativi all'esecuzione di
+    una lista di controlli in un'unica soluzione
+    allegando una stringa xml
+    >>> esito_controllo({'host':'apcas1', 'user':'apc1q',
+    'xml':'[tutto il contenuto xml (vedi xml_kontrolli.pl)]'})
+    '''
+    header = "<ccc xmlns=\"http://www.ced-padova-opsc.com\" \
+xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
+    footer = "</ccc>\n"
+    xml = header
+    for control in kwargs:
+        host = control['host']
+        user = control['user']
+        stats = control['stats']
+        if stats:
+            insert_statistic(stats)
+        xml += xml_control_element(control)
+    xml += footer
+    timestamp = time.strftime("%Y%m%d%H%M%S", time.gmtime())
+    xml_file_name = "%s/%s_xml_%s_%s.tmp" % (XML_TMP_PATH, host, user, timestamp)
+    #xml_file_name = "%s/%s_xml_%s.tmp" % (XML_TMP_PATH, host, user)
+    xml_file = open(xml_file_name, "w")
+    xml_file.write(xml)
+    xml_file.close()
+    logger.info("Trasferimento file %s" % xml_file_name)
+    cmd = "scp -o ConnectTimeout=5 -i %s %s %s@%s:%s" % (XML_RCV_KEY, xml_file_name, XML_RCV_USER, XML_RCV_HOST, XML_RCV_PATH)
+    args = shlex.split(cmd)
+    lista_errori = []
+    try:
+        (complete_output, errori_esecuzione) = Popen(args, stdout=PIPE, stderr=PIPE).communicate()
+    except:
+        logger.error(sys.exc_info()[1])
+        logger.error("output:%s errori:%s" % (complete_output, errori_esecuzione))
+        err =  sys.exc_info()[1]
+        lista_errori.append({"errori": err})
+        err = ""
+    logger.debug("SCP: output:%s errori:%s" % (complete_output, errori_esecuzione))
+    os.remove(xml_file_name)
+    return lista_errori
+    #return "OK"
+
+def xml_control_element(kwargs):
+    '''return an xml element for a single control'''
+    match = re.match(r"(?P<data>\d{4}-\d{2}-\d{2}) (?P<ora>\d{2}:\d{2}:\d{2})", kwargs.get('ora'))
+    data = match.group('data')
+    ora = match.group('ora')
+    xml_element = "<controllo><nome_macchina>%s</nome_macchina>\
+<nome>%s</nome><script>%s</script><versione>1.0</versione><data>%s</data>\
+<ora>%s</ora><esito></esito><errori>%s</errori>\
+<output>%s</output></controllo>" \
+% (kwargs.get('host'), kwargs.get('nome_controllo'), kwargs.get('script'), \
+data, ora, cgi.escape(kwargs.get('errori').__str__()), cgi.escape(kwargs.get('output').__str__()))
+    return xml_element
+
+
+def insert_statistic(kwargs):
+    '''method used to insert a statistic in DB'''
+    stats = kwargs
+    stats_to_insert = []
+    for stat in stats:
+        message = "inserimento statistica: %s" % stat
+        logger.debug(message)
+        host = stat.get('host')
+        user = stat.get('user')
+        message = "conversione stat_time"
+        logger.debug(message)
+        stat_type = stat.get('stat_type', '')
+        print "stat_type:" + stat_type
+        stat_time = datetime_conversion(stat.get('stat_time'))
+        timestamp = datetime_conversion(stat.get('timestamp'))
+        stat_element = stat.get('stat_element')
+        stat_value = stat.get('stat_value')
+        stat_extra = stat.get('stat_extra', '')
+        for pe in ProductionEnvironment.objects.filter(host__name=host, user=user):
+            st = StatType.objects.filter(name=stat_type)
+            if st.count() == 0:
+                message = "la statistica di tipo %s non e' configurata" % stat_type
+                print message
+                logger.error(message)
+                continue
+            s = Statistic(stat_time=stat_time, timestamp=timestamp, \
+stat_element=stat_element, stat_value=stat_value, stat_extra=stat_extra, \
+productionEnvironment=pe, statType=st[0])
+            stats_to_insert.append(s)
+            try:
+                s.save()
+            except :
+                message = sys.exc_info()
+                logger.error(message)
+            #print sys.exc_info()
+            #exc_type, exc_obj, exc_tb = sys.exc_info()                                                                                
+            #message = 'Exception: %s' % str(e)                                                                                        
+            #message = sys.exc_info()                                                                                                  
+            #logger.error(message)                                                                                                     
+            #print message
+            # try:
+            #     s.save()
+            # except IntegrityError:
+            #     message = "statistica scartata in quanto gia' inserita %s" % s
+            #     print message
+            #     logger.debug(message)
+            #     continue
+#            except:
+#                exc_type, exc_obj, exc_tb = sys.exc_info()
+#                message = 'Exception: %s' % str(e)
+#                message = sys.exc_info()
+#                logger.error(message)
+#                print message
+#                message = "statistica scartata: %s" %stat
+#                print message
+#                logger.debug(message)
+#                continue
+
+            message = "inserita statistica %s" % s
+            print message
+            logger.debug(message)
+
+
+
+
+
+
+
+
+
+
