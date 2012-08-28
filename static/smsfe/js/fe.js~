@@ -1,0 +1,33 @@
+// Contatore caratteri.
+function textCounter(field,cntfield,maxlimit){
+    if(field.value.length > maxlimit)
+        field.value = field.value.substring(0,maxlimit);
+    else
+        cntfield.value = maxlimit - field.value.length;
+}
+
+// Post via AJAX.
+jQuery(function() {
+  var form = jQuery("#sndsmsform");
+  form.submit(function(e) {
+      //jQuery("#sendbutton").attr('disabled',true)
+      jQuery("#sendbutton").hide()
+      jQuery("#sendwrapper").append('<span><img src="/static/images/throbber.gif"></img>&nbsp;&nbsp;&nbsp;&nbsp;Sendig message, please wait ... </span>')
+      jQuery("#ajaxwrapper").load(
+          form.attr('action') + ' #ajaxwrapper',
+          form.serializeArray(),
+          function(responseText,responseStatus) {
+              //jQuery("#sendbutton").attr('disabled',false);
+              jQuery("#sendbutton").show()
+              alert(responseStatus);
+          }
+      );
+      e.preventDefault(); 
+  });
+});
+
+$(document).ajaxStart(function() {
+   $('#spinner').show();
+}).ajaxStop(function() {
+   $('#spinner').hide();
+});

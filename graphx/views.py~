@@ -1,0 +1,40 @@
+from datetime import datetime, timedelta
+import time
+import re
+
+from django.db.models import Q
+from django.shortcuts import render
+
+from fff.models import Statistic
+
+#
+# Andamento ricariche Banking.
+#
+def grph(request):
+    now = datetime.now()
+    four_hours_ago = now - timedelta(hours=4)
+    stats = Statistic.objects.filter(Q(statType__name = 'ricariche_nbip'), Q(stat_time__gt = four_hours_ago)).order_by('-stat_element')
+    #stats = Statistic.objects.filter(Q(statType__name = 'ricariche_nbip'))
+    seriesData = {}
+    for d in stats:
+        if d.stat_element not in seriesData:
+            seriesData[d.stat_element] = []
+        date_time = '%d-%d-%d %d:%d:%d' % (d.stat_time.year,d.stat_time.month,d.stat_time.day,d.stat_time.hour,d.stat_time.minute,d.stat_time.second)
+        pattern = '%Y-%m-%d %H:%M:%S'
+        epoch =  int(time.mktime(time.strptime(date_time,pattern)))*1000
+        #print '%s -> %s ' % (date_time,epoch)
+        seriesData[d.stat_element].append([epoch,d.stat_value])
+    SERIES = ''
+    SERIESA = ''
+    SERIESD = ''
+    colors = {'1014':'#33CC00', '1314':'#339900', '1002':'#003399', '1302': '#0000FF','1001':'#FF0000', '1301':'#FF0000' }
+    for k in seriesData.keys():
+        SERIES += 'var a%s = \"%s\"; ' % (k,k)
+        SERIESD += 'var d%s = %s; ' % (k,seriesData[k])
+        color = colors.get(k, '')
+        SERIESA += 'chart.addSeries({ name: \'%s\',color: \'%s\', data: d%s, pointInterval: 60 * 60 * 1000});' % (k,color,k)
+        
+    # Pigrismo, da sistemare questo stupido hack.
+    SERIESD = SERIESD.replace('L,',',')
+    SERIESD = SERIESD.replace('L]',']')
+    return render(request,'graphx/reload-banking.html',{'SERIES':SERIES,'SERIESA':SERIESA,'SERIESD':SERIESD})
