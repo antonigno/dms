@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block breadcrumbs %}{% endblock %}
+{% block title %}{{ title }} {% trans 'FFF: Frontend Figo per i Fistemi' %} {% endblock %}
+
+
+{% block nav-global %}{% endblock %}

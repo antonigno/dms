@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Send Message{% endblock %}
+
+{% block extrahead %}
+  <script type="text/javascript">
+  /*<![CDATA[*/
+  jQuery(function() {
+      var form = jQuery("#sndsmsform");
+      form.submit(function(e) {
+          jQuery("#sendbutton").attr('disabled', true)
+          jQuery("#sendwrapper").prepend('<span>Invio messagio, attendere prego... </span>')
+          jQuery("#ajaxwrapper").load(
+              form.attr('action') + ' #ajaxwrapper',
+              form.serializeArray(),
+              function(responseText,responseStatus) {
+                  jQuery("#sendbutton").attr('disabled',false);
+                  alert(responseStatus);
+              }
+          );
+          e.preventDefault(); 
+      });
+  });
+  /*]]>*/
+  </script>
+{% endblock %}
+
+{% block content %}
+<form action="SendMessage/{{destination}}" method="post" id="sndsmsform">
+    <div id="ajaxwrapper">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {{ form.as_p }}
+        <p id="sendwrapper"><input type="submit" value="Send" id="sendbutton"/></p>
+    </div>
+</form>
+{% endblock %}

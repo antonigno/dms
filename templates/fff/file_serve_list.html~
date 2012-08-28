@@ -1,0 +1,45 @@
+{% extends "fff/base_fff.html" %}
+{% block content%}
+    <h2>Aggiungi File da Allineare</h2>
+      <form action="/file_serve_list" method="post" >
+         {{form.as_p}}
+         <input type="submit" value="Submit" />
+      </form>
+  {% if file_serve_list %}
+    {% if error_message %}<h2>{{ error_message }}</h2>{% endif %}
+      <h2>Lista File da Allineare</h2>
+      <table border=1>
+      <tr>
+      <th>file name</th>
+      <th>file path</th>
+      <th>destination path</th>
+      <th>production environment</th>
+      <th>permissions</th>
+      <th>error</th>
+      <th>delete</th>
+      </tr>
+      {% for c in file_serve_list %}
+          <tr>
+            <td>{{ c.file_name }}</td>
+	    <td>{{ c.file_path }}</td>
+	    <td>{{ c.destination_path }}</td>
+            <td>{{ c.productionEnvironment.name }} ({{ c.productionEnvironment.host }}) </td>
+            <td>{{ c.permissions }}</td>
+	    <td>{{ c.error }}</td>
+	    <td>
+	      <form action="/file_serve_delete" method="post" >
+		<input type="hidden" value="{{ c.file_name }}" name="file_name"/>
+		<input type="hidden" value="{{ c.file_path }}" name="file_path"/>
+		<input type="hidden" value="{{ c.destination_path }}" name="destination_path"/>
+		<input type="hidden" value="{{ c.productionEnvironment.host.name }}" name="production_environment"/>
+		<input type="submit" value="Delete"/>
+	      </form>	   
+	    </td>
+          </tr>
+      {% endfor %}
+      </table>
+  {% else %}
+      <h2>Nessun File da Allineare.</h2>
+  {% endif %}
+
+{% endblock%}

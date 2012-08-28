@@ -1,0 +1,29 @@
+{% extends "fff/base_fff.html" %}
+{% block content%}
+  {% if area_list %}
+    {% if error_message %}<h2>{{ error_message }}</h2>{% endif %}
+      <h2>Aggiungi area</h2>
+        <form action="/area_list" method="post" >
+         {{form.as_p}}
+        <input type="submit" value="Submit" />
+      </form>
+      <h2>Lista Aree</h2>
+      <table border=1>
+      <tr>
+      <th>nome</th>
+      <th>macchina</th>
+      <th>utenza</th>
+      </tr>
+      {% for c in area_list %}
+          <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ c.productionEnvironment.host.name }}</td>
+            <td>{{ c.productionEnvironment.user }}</td>
+          </tr>
+      {% endfor %}
+      </table>
+  {% else %}
+      <h2>Nessuna Area configurata.</h2>
+  {% endif %}
+
+{% endblock%}

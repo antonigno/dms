@@ -1,0 +1,12 @@
+{% extends "fff/base_fff.html" %}
+{% block content%}
+    {% if error_message %}<h2>{{ error_message }}</h2>{% endif %}
+      <h2>Funzioni principali</h2>
+      <ul>
+	<li><a href="/control_list">lista controlli</a></li>
+	<li><a href="/area_list">lista aree</a></li>
+	<li><a href="/file_serve_list">lista file serve</a></li>
+	<li><a href="/admin">tool di amministrazione</a></li>
+	<li><a href="/RPC2">lista funzioni RPC</a></li>
+</ul>
+{% endblock%}

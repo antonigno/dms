@@ -1,0 +1,26 @@
+{% extends "fff/base_fff.html" %}
+
+{% block branding %}
+<div id="logo">
+  <h1><a href="/">FFF Frontend Figo per i Fistemi</a></h1>
+  <p>Numero batch</p>
+</div>
+{% endblock %}
+{% block content%}
+    {% if stats %}
+   <!--  {% regroup stats|dictsort:"day" by day as sorted_stats%} -->
+      <table border=1>
+	<th>giorno</th>
+	<th>totale batch classic</th>
+	{% for batch in stats %}
+        <tr>
+	  <td>{{ batch.day }}</td>
+          <td>{{ batch.value }}</td>
+        </tr>
+	{% endfor %}
+      </table>
+    {% else %}
+      <h2>Nessuna statistica.</h2>
+  {% endif %}
+
+{% endblock%}

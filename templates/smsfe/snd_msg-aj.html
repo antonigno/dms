@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Send Message{% endblock %}
+
+{% block extrahead %}
+  <script type="text/javascript" src="/static/js/jquery.tooltip.js"></script>
+  <script type="text/javascript" src="/static/js/jquery-1.7.1.min.js"></script>
+  <script type="text/javascript" src="/static/js/fe.js"></script>
+  <script type="text/javascript">
+  /*<![CDATA[*/
+  jQuery(function() {
+      var form = jQuery("#sndsmsform");
+      form.submit(function(e) {
+          jQuery("#sendbutton").attr('disabled', true)
+          jQuery("#sendwrapper").prepend('<span>Invio messagio, attendere prego... </span>')
+          jQuery("#ajaxwrapper").load(
+              form.attr('action') + ' #ajaxwrapper',
+              form.serializeArray(),
+              function(responseText,responseStatus) {
+                  jQuery("#sendbutton").attr('disabled',false)
+              }
+          );
+          e.preventDefault(); 
+      });
+  });
+  /*]]>*/
+  </script>
+  <style type="text/css">
+    ul.errorlist {
+        margin: 0;
+        padding: 0;
+    }
+    .errorlist li {
+        background-color: red;
+        color: white;
+        display: block;
+        font-size: 10px;
+        margin: 0 0 3px;
+        padding: 4px 5px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="field{% if form.message.errors %} errors{% endif %}">
+    {% if form.message.errors %}
+        <ul>
+        {% for field in form %}
+            <li><strong>{{ field.errors }}</strong></li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+    {{ form.message }}
+</div>
+
+<form action="/SendMessage/{{destination}}/" method="post">
+<div id="ajaxwrapper">
+    {% csrf_token %}
+        <div id="elenco_nominativi">
+         {{ form.list.label }}{{ form.list }}
+        </div>
+    <div id="two_buttons">
+       <input value=" &gt;&gt; " onclick="javascript:addSrcToDestList('id_list','id_selected_from_list');" type="button">
+       <br /><br />
+       <input value=" &lt;&lt; " onclick="javascript:-DeleteFromDestList('id_selected_from_list');" type="button">
+    </div>
+    <div id="elenco_destinatari">
+     {{ form.selected_from_list.label }}{{ form.selected_from_list }}
+    </div>
+    <br>
+    <div id="separator"></div>
+     {{ form.send_mail}}
+     <div id="separator"></div>
+     {{ form.text.label }}{{ form.text }}
+    <br>
+    {{ form.characters.label }}{{ form.characters }}
+    <br>
+    <br>
+    {{ field.errors }}
+        <p id="sendwrapper"><input type="submit" value="Send" id="sendbutton" onclick="selectAll('id_selected_from_list',true);selectAll('id_list',false)"/></p>
+</div>
+</form>
+{% endblock %}

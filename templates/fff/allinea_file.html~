@@ -1,0 +1,45 @@
+{% extends "fff/base_fff.html" %}
+{% block content%}
+  {% if lista_file %}
+    {% if error_message %}<h2>{{ error_message }}</h2>{% endif %}
+
+    
+      <h2>Lista file da allineare</h2>
+      <table border=1>
+      <tr>
+      <th>host</th>
+      <th>user</th>
+      <th>nome file</th>
+      <th>repository</th>
+      <th>repository_user</th>
+      <th>destination_path</th>
+      <th>elimina</th>
+      </tr>
+      {% for file in lista_file %}
+          <tr>
+            <td>{{ file.host.hostname }}</td>
+            <td>{{ file.user.utenza }}</td>
+            <td>{{ file.nome_file }}</td>
+            <td>{{ file.repository.hostname }}</td>
+            <td>{{ file.repository_user.utenza }}</td>
+            <td>{{ file.destination_path }}</td>
+            <!-- mettere method=post sotto -->
+            <td>
+              <form action="file_allineato" method="post">
+                <button type="submit" name="file_id" value="{{file.id}}">elimina</button>
+              </form>
+            </td>
+            <!--td><a href="/file_allineato/{{file.id}}">elimina</a></td-->
+          </tr>
+      {% endfor %}
+      </table>
+  {% else %}
+      <h2>Nessun file da allineare.</h2>
+  {% endif %}
+  <h2>Aggiungi file da allineare</h2>
+  <form action="/allinea_file" method="post">
+    {{form.as_p}}
+    <input type="submit" value="Submit" />
+  </form>
+
+{% endblock%}

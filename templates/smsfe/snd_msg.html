@@ -1,0 +1,20 @@
+{% extends "smsfe/fe-base.html" %}
+
+{% block title %}Send Message{% endblock %}
+
+{% block extrahead %}
+  <script type="text/javascript" src="/static/smsfe/js/fe.js"></script>  
+{% endblock %}
+
+{% block content %}
+<form action="/SendMessage/{{destination}}/" method="post" id="sndsmsform">
+    <div id="ajaxwrapper">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {{ form.as_p }}
+        Characters: <input readonly="readonly" name="remLen" id="remLen" size="3" maxlength="3" value="143" type="text"></input>
+        <p id="sendwrapper"><input type="submit" value="Send" id="sendbutton"/></p>
+    </div>
+</form>
+{% endblock %}
+

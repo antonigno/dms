@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+    <!-- <link rel="stylesheet" href="/static/css/smsfeng.css" type="text/css" media="screen" /> -->
+    <!-- <link rel="shortcut icon" type="images/icon" href="/static/img/favicon.ico" /> -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- <meta http-equiv="refresh" content="120"/> -->
+    <title>Andamento ricariche</title>
+
+    <!-- 1. Add these JavaScript inclusions in the head of your page -->
+    <script type="text/javascript" src="/static/common/js/jquery-1.4.2.min.js"></script>
+    <script type="text/javascript" src="/static/grphx/js/highcharts.js"></script>
+
+    <!-- 1a) Optional: the exporting module -->
+    <!-- <script type="text/javascript" src="/static/js/modules/exporting.js"></script> -->
+
+    <!-- 2. Add the JavaScript to initialize the chart on document ready -->
+    <script type="text/javascript">
+        var chart; // global
+
+        {{ SERIES|safe }}
+        {{ SERIESD }}
+
+        var chartOptions = {
+            chart: {
+                renderTo: 'container',
+                zoomType: 'x',
+                defaultSeriesType: 'line',
+            },
+            exporting: { enabled: false },
+            title: {
+                text: 'Andamento ricariche'
+            },
+            subtitle: {
+		        text: 'Clicka e trascina l\'area del grafico per zoommare'
+		    },
+            xAxis: {
+                type: 'datetime',
+                startOnTick: true,
+                maxZoom: 60 * 1000
+            },
+            yAxis: {
+                title: {
+                    text: 'Numero di ricariche per tipologia',
+                    margin: 70
+                },
+                gridLineWidth: 1,
+                min: 0,
+			    startOnTick: false,
+			    showFirstLabel: false
+            },
+            legend: {
+                layout: 'horizontal',
+                style: {
+                    left: 'auto',
+                    bottom: 'auto',
+                    top: 'auto'
+                }
+            },        
+            series: []
+        };
+
+        Highcharts.setOptions({
+            global: {
+                useUTC: false
+            }
+        });
+
+        $(document).ready(function(){
+            chart = new Highcharts.Chart(chartOptions);
+            {{ SERIESA|safe }}
+        });
+
+    </script>
+{% endblock %}
+
+{% block content %}
+    <!-- 3. Add the container -->
+    <div id="container" style="width: 100%; height: 900px"></div>
+{% endblock %}

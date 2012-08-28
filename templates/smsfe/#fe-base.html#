@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block breadcrumbs %}{% endblock %}
+{% block branding %}
+<div id="logo">
+    		<h1><a href="">SMS Gateway Gold</a></h1>
+                		<p>Web sms dispatcher</p>
+            </div>
+            <div id="menu">
+                <ul>
+                    <li><a href="/SendMessage/free">Send sms</a></li>
+                    <li><a href="/SendMessage/list">Send sms to list</a></li>
+                    <li><a href="/Person">Person</a></li>
+                </ul>
+            </div>
+{% endblock %}
+
+{% block footer %}
+<div id="footer">
+	<p>&copy;2012 All Rights Reserved. &nbsp;&bull;&nbsp; Developed by <a href="http://10.41.8.202/">CED Padova OPSC - Dev Team</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<title>{% block title %}{% endblock %}</title>
+<link href="{{ STATIC_URL }}css/default.css" rel="stylesheet" type="text/css" media="screen" />
+<script type="text/javascript" src="{{ STATIC_URL }}js/jquery-1.7.1.min.js"></script>
+{% block extrahead %}{% endblock %}
+</head>
+<body>
+<!-- start header -->
+<div id="header">
+	<div id="logo">
+		<h1><a href="">SMS Gateway Gold</a></h1>
+		<p>Web sms dispatcher</p>
+	</div>
+	<div id="menu">
+		<ul>
+			<li><a href="/SendMessage/free">Send sms</a></li>
+            <li><a href="/SendMessage/list">Send sms to list</a></li>
+			<!--
+            <li><a href="/Person">Test</a></li>
+			<li><a href="">Documentation</a></li>
+            -->
+		</ul>
+	</div>
+</div>
+<!-- end header -->
+<!-- start page -->
+<div id="page">
+	<!-- start content -->
+	<div id="content">
+		{% block content %}
+		{% endblock %}
+	</div>
+	<!-- end content -->
+	<!-- start sidebar -->
+	<div id="sidebar">
+		{% block sidebar %}{% endblock %}
+	</div>
+	<!-- end sidebar -->
+</div>
+<!-- end page -->
+<div id="footer">
+	<p>&copy;2012 All Rights Reserved. &nbsp;&bull;&nbsp; Developed by <a href="http://10.41.8.202/">CED Padova OPSC - Dev Team</a></p>
+</div>
+</body>
+</html>

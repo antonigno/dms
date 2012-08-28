@@ -1,0 +1,52 @@
+{% extends "fff/base_fff.html" %}
+{% block content%}
+  {% if lista_file %}
+      <table border=1>
+      <tr>
+      <th>host</th>
+      <th>user</th>
+      <th>nome file</th>
+      <th>repository</th>
+      <th>repository_user</th>
+      <th>destination_path</th>
+      <th>elimina</th>
+      </tr>
+      {% for file in lista_file %}
+          <tr>
+            <td>{{ file.host.hostname }}</td>
+            <td>{{ file.user.utenza }}</td>
+            <td>{{ file.nome_file }}</td>
+            <td>{{ file.repository.hostname }}</td>
+            <td>{{ file.repository_user.utenza }}</td>
+            <td>{{ file.destination_path }}</td>
+            <!-- mettere method=post sotto -->
+            <td>
+              <form action="file_allineato" method="post">
+                <button type="submit" name="file_id" value="{{file.id}}">elimina</button>
+              </form>
+            </td>
+            <!--td><a href="/file_allineato/{{file.id}}">elimina</a></td-->
+          </tr>
+      {% endfor %}
+      </table>
+  {% else %}
+      <p>Nessun file da allineare.</p>
+  <form action="/allinea_file" method="post">
+      {% for f in form %}
+        {% if f.label == "Host" or f.label == "User" or f.label == "Repository" or f.label == "Repository user" %}
+          <p>{{f.label}}:
+            <select label="{{f.label}}">
+              {% for choice in f.field.choices %}
+                <option value="{{choice}}">{{choice}}</option>
+              {% endfor %}
+            </select>
+          </p>
+          {% else %}
+            <p><label for="{{f.label}}">{{f.label}}</label> <input id="id_{{f.label}}" type="text" name="user" maxlength="20" /></p>
+        {% endif %}
+      {% endfor %}
+    <input type="submit" value="Submit" />
+  </form>
+
+  {% endif %}
+{% endblock%}

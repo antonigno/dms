@@ -1,0 +1,65 @@
+{% extends "fff/base_fff.html" %}
+
+{% block branding %}
+<div id="logo">
+  <h1><a href="/">FFF Frontend Figo per i Fistemi</a></h1>
+  <p>Lista  controlli  configurati</p>
+</div>
+<div id="menu">
+  <ul>
+    <li><a href="/control_list/area">per area</a></li>
+    <li><a href="/control_list/host">per host</a></li>
+  </ul>
+</div>
+{% endblock %}
+{% block content%}
+  {% if control_list %}
+    <h2>Aggiungi controllo</h2>
+
+    <form action="/control_list/{{dest}}/" method="post" >
+      {% csrf_token %}
+      {{form.as_p}}
+      <input type="submit" value="Submit" />
+    </form>
+
+    {% if error_message %}<h2>{{ error_message }}</h2>{% endif %}
+      <h2>Lista Controlli Configurati</h2>
+      <table border=2 width="1024" >
+      <tr>
+      <th>nome</th>
+      <th>macchina</th>
+      <th>script</th>
+      <th>time_slot</th>
+      <th>delete</th>
+      </tr>
+      {% for c in control_list %}
+          <tr>
+            <td width="10%">{{ c.name }}</td>
+            <td width="30%">{% for pe in c.productionEnvironment.all %} {{ pe.name }}({{ pe.user.name}}), {% endfor %}</td>
+            <td width="40%">{{ c.script }}</td>
+            <td width="10%">{{ c.time_slot }}</td>
+            <td>
+              <form action="/control_list_delete" method="post" >
+		{% csrf_token %}
+		<input type="hidden" value="{{ c.name }}" name="name"/>
+		<input type="hidden" value="{{ c.productionEnvironment.host.name }}" name="hostname"/>
+		<input type="hidden" value="{{ c.productionEnvironment.user }}" name="user"/>
+		<input type="hidden" value="{{ c.script }}" name="script"/>
+                <input type="hidden" value="{{ c.time_slot }}" name="time_slot"/>
+		<input type="submit" value="Delete"/>
+	      </form>
+	    </td>
+            <!-- <td> -->
+            <!--   <form action="file_allineato" method="post"> -->
+            <!--     <button type="submit" name="file_id" value="{{file.id}}">elimina</button> -->
+            <!--   </form> -->
+            <!-- </td> -->
+            <!--td><a href="/file_allineato/{{file.id}}">elimina</a></td-->
+          </tr>
+      {% endfor %}
+      </table>
+  {% else %}
+      <h2>Nessun controllo configurato.</h2>
+  {% endif %}
+
+{% endblock%}
